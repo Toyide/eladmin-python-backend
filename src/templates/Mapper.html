@@ -1,0 +1,48 @@
+# coding=utf-8
+"""
+Copyright 2019-{{ year }} Ge Yide
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+# @Time    : {{ date }}
+# @Author  : {{ author }}
+# @Email   : yge@dal.ca
+# @File    : {{ className }}.py
+# @Project : eladmin_py_backend
+from flask_restful import fields
+
+{{ tableName | lower }}_fields = {
+{% for column in columns -%}
+    {% if column.columnType == 'String' -%}
+     '{{ column.changeColumnName }}': fields.String(attribute="{{ column.columnName }}"),
+    {% elif column.columnType == 'BigInteger' -%}
+    '{{ column.changeColumnName }}': fields.Integer(attribute="{{ column.columnName }}"),
+    {% elif column.columnType == 'Numeric' -%}
+    '{{ column.changeColumnName }}': fields.Float(attribute="{{ column.columnName }}"),
+    {% elif column.columnType == 'Integer' -%}
+    '{{ column.changeColumnName }}': fields.Integer(attribute="{{ column.columnName }}"),
+    {% elif column.columnType == 'DateTime' -%}
+    '{{ column.changeColumnName }}': DateTimeItem(attribute="{{ column.columnName }}"),
+    {% elif column.columnType == 'bit' -%}
+    '{{ column.changeColumnName }}': BItem(attribute="{{ column.columnName }}"),
+    {% else -%}
+    '{{ column.changeColumnName }}': fields.String(attribute="{{ column.columnName }}"),
+    {%- endif %}
+{%- endfor -%}
+}
+
+{{ tableName | lower }}_page_fields = {
+    'content': fields.List(fields.Nested({{ tableName | lower }}_fields), attribute="items"),
+    'totalElements': fields.Integer(attribute="total")
+}

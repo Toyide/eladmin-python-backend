@@ -1,0 +1,126 @@
+# coding=utf-8
+"""
+Copyright 2019-{{ year }} Ge Yide
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+# @Time    : {{ date }}
+# @Author  : {{ author }}
+# @Email   : yge@dal.ca
+# @File    : {{ className }}.py
+# @Project : eladmin_py_backend
+import datetime
+
+from flask import Blueprint, request, session
+from flask_restful import Api, Resource, marshal_with, inputs
+from flask_restful.reqparse import RequestParser
+
+from src.config import api_utils
+from src.config.api_utils import build_params, oper_log, datetime_parse
+from src.dto_mapper import {{ tableNameLower }}_page_fields
+from src.schema import {{ className }}Schema
+from src.service.sys_service import {{ className }}Service
+
+{{ changeClassName }}_app = Blueprint('{{ changeClassName }}', __name__, url_prefix='/api/{{ changeClassName }}')
+{{ changeClassName }}_api = Api({{ changeClassName }}_app)
+
+parser = RequestParser()
+{%- for column in columns -%}
+    {% if column.istNotNull -%}
+        {% set required = 'True' %}
+        {%- else -%}
+        {% set required = 'False' %}
+    {%- endif %}
+    {%- if column.columnType == 'String' -%}
+        {% set col_type = 'str' %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }}, trim=True, required={{ required }})
+    {%- elif column.columnType == 'BigInteger' -%}
+        {% set col_type = 'int' %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }}, trim=True, required={{ required }})
+    {%- elif column.columnType == 'Numeric' -%}
+        {% set col_type = 'float' %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }}, trim=True, required={{ required }})
+    {%- elif column.columnType == 'Integer' -%}
+        {% set col_type = 'int' %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }}, trim=True, required={{ required }})
+    {%- elif column.columnType == 'DateTime' -%}
+        {% set col_type = 'datetime_parse' %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }}, trim=True, required={{ required }})
+    {%- elif column.columnType == 'bit' -%}
+        {% set col_type = 'inputs.boolean' %}
+        {% set col_choices = "('true', 'false', 'True', 'False', True, False)" %}
+parser.add_argument('{{ column.changeColumnName }}', location='json', type={{ col_type }},
+                    choices={{ col_choices }},
+                    help='无效的选项: {error_msg}', trim=True, required={{ required }})
+    {%- endif %}
+{%- endfor %}
+
+
+@{{ changeClassName }}_api.resource('', '/')
+class {{ className }}API(Resource):
+    @oper_log('查询{{ className }}', request)
+    @marshal_with({{ tableNameLower }}_page_fields)
+    def get(self):
+        params = request.args.items(multi=True)
+        params_dict = api_utils.build_params(params)
+        return {{ className }}Service.query_all(**params_dict)
+
+    @oper_log('新增{{ className }}', request)
+    def post(self):
+        parser_post = parser.copy()
+        parser_post.remove_argument('id')
+        parser_post.parse_args()
+        params = request.get_json()
+        schema = {{ className }}Schema()
+        curr_data = schema.load(params, unknown="exclude")
+        user = session["user"]
+        curr_data.create_by = user["username"]
+        {{ className }}Service.create(curr_data=curr_data)
+
+    @oper_log('修改{{ className }}', request)
+    def put(self):
+        parser_put = parser.copy()
+        parser_put.parse_args()
+        params = request.get_json()
+        schema = {{ className }}Schema()
+        curr_data = schema.load(params, unknown="exclude")
+        user = session["user"]
+        curr_data.update_by = user["username"]
+        {{ className }}Service.update(curr_data=curr_data)
+
+    @oper_log('删除{{ className }}', request)
+    def delete(self):
+        ids = request.get_json()
+        {{ className }}Service.delete(ids=ids)
+
+
+@{{ changeClassName }}_api.resource('/download')
+class Download{{ className }}s(Resource):
+    @oper_log('导出{{ className }}', request)
+    def get(self):
+        params = request.args.items(multi=True)
+        params_dict = build_params(params)
+        pagination = {{ className }}Service.query_all(**params_dict)
+        return {{ className }}Service.download(data_list=pagination.items)
+
+
+{% set lt = '<' -%}
+{% set gt = '>' -%}
+@{{ changeClassName }}_api.resource('/{{ lt | safe }}int:_id{{ gt | safe }}')
+class Get{{ className }}ById(Resource):
+    @oper_log('根据ID查询{{ className }}', request)
+    @marshal_with({{ tableNameLower }}_fields)
+    def get(self, _id):
+        data = {{ className }}Service.find_by_id({{ changeClassName }}_id=_id)
+        return data

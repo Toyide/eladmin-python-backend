@@ -1,0 +1,57 @@
+# coding=utf-8
+"""
+Copyright 2019-{{ year }} Ge Yide
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+# @Time    : {{ date }}
+# @Author  : {{ author }}
+# @Email   : yge@dal.ca
+# @File    : {{ className }}.py
+# @Project : eladmin_py_backend
+from marshmallow import Schema, fields, post_load
+
+class {{ className }}Schema(Schema):
+{%- for column in columns -%}
+    {% if column.istNotNull -%}
+        {% set required = 'True' %}
+        {% set allow_none = 'False' %}
+        {%- else -%}
+        {% set required = 'False' %}
+        {% set allow_none = 'True' %}
+    {%- endif -%}
+    {%- if column.columnKey == 'PRI' -%}
+id = fields.Int(attribute="{{ column.columnName }}", load_from='id', allow_none=True)
+    {%- elif column.columnType == 'String' -%}
+{{ column.changeColumnName }} = fields.Str(attribute="{{ column.columnName }}", load_from='{{ column.changeColumnName }}', required={{ required }}, allow_none={{ allow_none }})
+    {%- elif column.columnType == 'BigInteger' -%}
+{{ column.changeColumnName }} = fields.Int(attribute="{{ column.columnName }}", load_from='{{ column.changeColumnName }}', required={{ required }}, allow_none={{ allow_none }})
+    {%- elif column.columnType == 'Numeric' -%}
+{{ column.changeColumnName }} = fields.Float(attribute="{{ column.columnName }}", load_from='{{ column.changeColumnName }}', required={{ required }}, allow_none={{ allow_none }})
+    {%- elif column.columnType == 'Integer' -%}
+{{ column.changeColumnName }} = fields.Int(attribute="{{ column.columnName }}", load_from='{{ column.changeColumnName }}', required={{ required }}, allow_none={{ allow_none }})
+    {%- elif column.columnType == 'DateTime' -%}
+{{ column.changeColumnName }} = fields.DateTime(format="%Y-%m-%d %H:%M:%S", attribute="{{ column.columnName }}", load_from='{{ column.changeColumnName }}',
+                                required={{ required }}, allow_none={{ allow_none }})
+    {%- elif column.columnType == 'bit' -%}
+{{ column.changeColumnName }} = fields.Bool(attribute="{{ column.columnName }}", truthy=truthy, falsy=falsy, required={{ required }}, allow_none={{ allow_none }})
+    {%- endif %}
+{%- endfor %}
+
+    class Meta:
+        model = {{ className }}
+
+    @post_load
+    def make_{{ tableNameLower }}(self, data: dict, **kwargs):
+        return {{ className }}(**data)

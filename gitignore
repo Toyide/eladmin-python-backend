@@ -1,0 +1,5 @@
+.idea/
+.metadata/
+venv/
+tests/
+__pycache__

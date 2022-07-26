@@ -1,0 +1,77 @@
+# coding=utf-8
+"""
+Copyright 2019-{{ year }} Ge Yide
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+# @Time    : {{ date }}
+# @Author  : {{ author }}
+# @Email   : yge@dal.ca
+# @File    : {{ className }}.py
+# @Project : eladmin_py_backend
+
+{% if hasDateAnnotation or hasTimestamp  -%}
+import datetime
+{%- endif %}
+
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import reconstructor
+from sqlalchemy.sql import expression
+
+class {{ className }}(db.Model):
+    __table_args__ = {
+        'mysql_engine': 'InnoDB',
+        'mysql_charset': 'utf8'
+    }
+    __tablename__ = "{{ tableName }}"
+{% for column in columns -%}
+    {% if column.columnKey == 'PRI' -%}
+        {% if column.columnType == 'String' -%}
+    {{ column.columnName }} = db.Column(db.String(), primary_key=True, autoincrement=False{% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}, index=True) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+        {%- else -%}
+    {{ column.columnName }} = db.Column(db.BigInteger(), primary_key=True, autoincrement=True, unique=True, index=True) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+        {%- endif %}
+    {% elif column.columnType == 'String' -%}
+    {{ column.columnName }} = db.Column(db.String(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}{% if column.istNotNull -%}, nullable=False{%- endif %}) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {% elif column.columnType == 'BigInteger' -%}
+    {{ column.columnName }} = db.Column(db.BigInteger(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}{% if column.istNotNull -%}, nullable=False{%- endif %}) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {% elif column.columnType == 'Numeric' -%}
+    {{ column.columnName }} = db.Column(db.Numeric(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}{% if column.istNotNull -%}, nullable=False{%- endif %}) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {% elif column.columnType == 'Integer' -%}
+    {{ column.columnName }} = db.Column(db.Integer(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}{% if column.istNotNull -%}, nullable=False{%- endif %}) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {% elif column.columnType == 'DateTime' -%}
+    {{ column.columnName }} = db.Column(db.DateTime(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}{% if column.istNotNull -%}, nullable=False{%- endif %}) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {% elif column.columnType == 'bit' -%}
+    {{ column.columnName }} = db.Column(db.Integer(){% if column.columnKey == 'UNI' -%}, unique=True{%- endif %}, server_default=expression.false(), default=False) {%- if column.remark != '' -%}# {{ column.remark }}{%- endif %}
+    {%- endif %}
+{%- endfor %}
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            if not k.startswith("_") and hasattr(self, k):
+                setattr(self, k, v)
+
+    def __repr__(self):
+        return '<{{ className }} %r>' % self.{{ pkColumnName }}
+
+    def __eq__(self, other):
+        if isinstance(other, {{ className }}):
+            return self.{{ pkColumnName }} == other.{{ pkColumnName }}
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.{{ pkColumnName }}) + hash(self.{{ pkColumnName }})

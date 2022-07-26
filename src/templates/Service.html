@@ -1,0 +1,136 @@
+# coding=utf-8
+"""
+Copyright 2019-{{ year }} Ge Yide
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+# @Time    : {{ date }}
+# @Author  : Fang Jin Biao
+# @Modified: Ge Yide
+# @Email   : yge@dal.ca
+# @File    : {{ className }}.py
+# @Project : eladmin_py_backend
+import datetime
+import os
+
+from src import db
+from src.config import api_utils
+from src.extensions import AppException
+from src.models import {{ className }}
+from src.tools import trim_and_lower, format_date, download_excel
+
+class {{ className }}Service:
+    @staticmethod
+    def query_all(page=0, size=9999, **kwargs):
+        sorts = kwargs.get('sort')
+        sort_params = api_utils.build_sorts(sorts, {{ changeClassName }}_fields, {{ className }})
+        query = []
+{%- for column in queryColumns %}
+        {{ column.changeColumnName }} = kwargs.get('{{ column.changeColumnName }}')
+        if {{ column.changeColumnName }}:
+            {%- if column.queryType == 'Like' %}
+                {% set queryType = '.like' -%}
+                {% set symbol_left = '{' -%}
+                {% set symbol_right = '}' -%}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }}(f'%{{ symbol_left }}{{ column.changeColumnName }}{{ symbol_right }}%'))
+            {% elif column.columnType == '=' -%}
+                {% set queryType = ' == ' %}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }}{{ column.changeColumnName }})
+            {% elif column.columnType == '!=' -%}
+                {% set queryType = ' != ' %}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }}{{ column.changeColumnName }})
+            {% elif column.columnType == 'NotNull' -%}
+                {% set queryType = 'isnot(None)' %}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }})
+            {% elif column.columnType == '>=' -%}
+                {% set queryType = ' >= ' %}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }}{{ column.changeColumnName }})
+            {% elif column.columnType == '<=' -%}
+                {% set queryType = ' <= ' %}
+            query.append({{ className }}.{{ column.columnName }}{{ queryType }}{{ column.changeColumnName }})
+            {%- endif -%}
+{%- endfor -%}
+{%- for column in betweens -%}
+        {{ column.changeColumnName }} = kwargs.get('{{ column.changeColumnName }}')
+        if {{ column.changeColumnName }}:
+            query.append(({{ className }}.{{ column.changeColumnName }}.between({{ column.changeColumnName }}[0], {{ column.changeColumnName }}[1])))
+{%- endfor %}
+        return {{ className }}.query.filter(*query).order_by(*sort_params).paginate(int(page) + 1, per_page=int(size), error_out=False)
+
+    @staticmethod
+    def create(curr_data: {{ className }}):
+{%- for column in columns -%}
+    {% if column.columnKey == 'UNI' %}
+        exist_{{ column.changeColumnName }} = {{ className }}.query.filter({{ className }}.{{ column.columnName }} == curr_data.{{ column.columnName }}).one_or_none()
+        if exist_{{ column.changeColumnName }}:
+            raise AppException(f'{curr_data.{{ column.columnName }}}已存在!')
+    {%- endif %}
+{%- endfor %}
+        curr_data.create_time = datetime.datetime.now()
+        db.session.add(curr_data)
+        db.session.commit()
+
+    @staticmethod
+    def update(curr_data: {{ className }}):
+{%- for column in columns -%}
+    {% if column.columnKey == 'UNI' %}
+        exist_{{ changeClassName }} = {{ className }}.query.filter({{ className }}.{{ column.columnName }} == curr_data.{{ column.columnName }}).all()
+        if [old for old in exist_{{ changeClassName }} if old.{{ pkColumnName }} != curr_data.{{ pkColumnName }}]:
+            raise AppException(f'{curr_data.{{ column.columnName }}}已存在!')
+    {%- endif %}
+{%- endfor %}
+        old_data = {{ className }}.query.filter({{ className }}.{{ pkColumnName }} == curr_data.{{ pkColumnName }}).one_or_none()
+        if old_data is None:
+            raise AppException(f'修改的数据可能已不存在!')
+{% for column in columns %}
+        old_data.{{ column.columnName }} = curr_data.{{ column.columnName }}
+{%- endfor %}
+        db.session.commit()
+
+    @staticmethod
+    def delete(ids: list):
+        if ids:
+            old_list = db.session.query({{ className }}).filter({{ className }}.{{ pkColumnName }}.in_(ids)).all()
+            for d in old_list:
+                db.session.delete(d)
+            db.session.commit()
+
+    @staticmethod
+    def find_by_id({{ changeClassName }}_id: int = None) -> {{ className }}:
+        data = {{ className }}.query.filter({{ className }}.{{ pkColumnName }} == {{ changeClassName }}_id).one_or_none()
+        if data is None:
+            raise AppException(f'您所操作的对象已不存在!')
+        return data
+
+    @staticmethod
+    def download(data_list: list):
+        contents = []
+        for d in data_list:
+            data = OrderedDict()
+    {%- for column in columns -%}
+        {% if column.columnKey != 'PRI' -%}
+            {% if column.remark != '' -%}
+                {% set key = column.remark -%}
+            {% else -%}
+                {% set key = column.changeColumnName -%}
+            {%- endif %}
+            {%- if column.columnType == 'DateTime' %}
+            data["{{ key }}"] = format_date(d.{{ column.columnName }}) if d.{{ column.columnName }} else ""
+            {%- else %}
+            data["{{ key }}"] = d.{{ column.columnName }}
+            {%- endif -%}
+        {%- endif -%}
+    {%- endfor %}
+            contents.append(data)
+        return download_excel(contents)
