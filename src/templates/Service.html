@@ -16,8 +16,7 @@ limitations under the License.
 """
 
 # @Time    : {{ date }}
-# @Author  : Fang Jin Biao
-# @Modified: Ge Yide
+# @Author  : Ge Yide
 # @Email   : yge@dal.ca
 # @File    : {{ className }}.py
 # @Project : eladmin_py_backend
@@ -29,6 +28,8 @@ from src.config import api_utils
 from src.extensions import AppException
 from src.models import {{ className }}
 from src.tools import trim_and_lower, format_date, download_excel
+from collections import OrderedDict
+from src.dto_mapper import {{ changeClassName }}_fields
 
 class {{ className }}Service:
     @staticmethod

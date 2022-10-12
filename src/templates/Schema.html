@@ -21,6 +21,7 @@ limitations under the License.
 # @File    : {{ className }}.py
 # @Project : eladmin_py_backend
 from marshmallow import Schema, fields, post_load
+from src.models import {{ className }}
 
 class {{ className }}Schema(Schema):
 {%- for column in columns -%}
@@ -49,9 +50,9 @@ id = fields.Int(attribute="{{ column.columnName }}", load_from='id', allow_none=
     {%- endif %}
 {%- endfor %}
 
-    class Meta:
-        model = {{ className }}
+        class Meta:
+            model = {{ className }}
 
-    @post_load
-    def make_{{ tableNameLower }}(self, data: dict, **kwargs):
-        return {{ className }}(**data)
+        @post_load
+        def make_{{ tableNameLower }}(self, data: dict, **kwargs):
+            return {{ className }}(**data)
